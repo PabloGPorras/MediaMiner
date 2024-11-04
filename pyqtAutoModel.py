@@ -208,3 +208,4 @@ class ModelForm(QWidget):
         # Populate the form if a new instance is provided
         if self.instance:
             self.populate_form_from_instance()
+        
