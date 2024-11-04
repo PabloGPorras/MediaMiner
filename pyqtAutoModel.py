@@ -2,54 +2,55 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QFormLayout, QPushButton, QComboBox, 
     QSpinBox, QDoubleSpinBox, QCheckBox, QDateEdit, QTimeEdit, QDateTimeEdit, 
-    QVBoxLayout, QFileDialog, QHBoxLayout, QListWidget, QListWidgetItem, QScrollArea
+    QVBoxLayout, QFileDialog
 )
 from PyQt6.QtCore import Qt, QTime, QDate, QDateTime
-from sqlalchemy import inspect, create_engine, Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy import inspect
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date, time
 from model import Base, User  # Replace with your models
 
 # Database Setup
-engine = create_engine('sqlite:///your_database.db')
-Base.metadata.create_all(engine)
+from model import engine
+
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Comment(Base):
-    __tablename__ = 'comments'
-    id = Column(Integer, primary_key=True)
-    content = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-
-    user = relationship('User', back_populates='comments')
-
-User.comments = relationship('Comment', back_populates='user', cascade="all, delete-orphan")
-
 class ModelForm(QWidget):
-    def __init__(self, model_class, instance=None, included_columns=None, edit_mode=False, *args, **kwargs):
+    def __init__(self, model_class, instance=None, included_columns=None, excluded_columns=None,
+                 editable_fields=None, non_editable_fields=None, edit_mode=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model_class = model_class
         self.instance = instance
         self.edit_mode = edit_mode
         self.included_columns = included_columns or []
+        self.excluded_columns = excluded_columns or []
+        self.editable_fields = editable_fields or []
+        self.non_editable_fields = non_editable_fields or []
         self.fields = {}
 
-        # Main Layout with Form and Comments Section
-        main_layout = QHBoxLayout()
-
-        # Form Layout
+        # Main form layout setup
         self.form_layout = QFormLayout()
-        self.form_layout.setHorizontalSpacing(20)
-        self.form_layout.setVerticalSpacing(15)
+        self.set_main_layout()
+        self.setWindowTitle("Edit Form" if self.edit_mode else "Create New Entry")
+        self.setFixedSize(400, 400)
+
+        # Populate form with initial instance if provided
+        if self.instance:
+            self.populate_form_from_instance()
+
+    def set_main_layout(self):
+        """Set up the main layout and build form fields."""
+        # Clear existing layout if reinitializing
+        QWidget().setLayout(self.form_layout)
         
-        for column in inspect(model_class).c:
-            if column.name in self.included_columns:
+        # Build form layout
+        for column in inspect(self.model_class).c:
+            if self._should_include_column(column.name):
                 self._add_form_field(column)
 
-        # Buttons for Submit and Bulk Import
+        # Add buttons for Submit and Bulk Import if not in edit mode
         if not self.edit_mode:
             self.submit_button = QPushButton("Submit")
             self.submit_button.clicked.connect(self.submit_form)
@@ -60,24 +61,21 @@ class ModelForm(QWidget):
             self.form_layout.addWidget(self.submit_button)
             self.form_layout.addWidget(self.bulk_import_button)
 
-        form_container = QWidget()
-        form_container.setLayout(self.form_layout)
-        main_layout.addWidget(form_container)
-
-        # Comments Section
-        self.comment_section = self.create_comment_section()
-        main_layout.addWidget(self.comment_section)
-
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(self.form_layout)
         self.setLayout(main_layout)
-        self.setWindowTitle("Edit Form with Comments")
-        self.setFixedSize(800, 400)
 
-        if self.instance:
-            self.populate_form()
-            self.load_comments()
-
+        # Set field editability based on configuration
         if self.edit_mode:
-            self.disable_fields()
+            self.set_field_editability()
+
+    def _should_include_column(self, column_name):
+        """Determine if a column should be included based on included and excluded columns."""
+        if self.included_columns and column_name not in self.included_columns:
+            return False
+        if self.excluded_columns and column_name in self.excluded_columns:
+            return False
+        return True
 
     def _add_form_field(self, column):
         label = QLabel(column.name.capitalize() + ":")
@@ -113,58 +111,37 @@ class ModelForm(QWidget):
         self.form_layout.addRow(label, field)
         self.fields[column.name] = field
 
-    def create_comment_section(self):
-        """Create the comments section layout."""
-        layout = QVBoxLayout()
+    def populate_form_from_instance(self):
+        """Populate form fields with data from the provided model instance."""
+        for field_name, field_widget in self.fields.items():
+            value = getattr(self.instance, field_name, None)
+            if value is not None:
+                if isinstance(field_widget, QComboBox):
+                    index = field_widget.findText(value)
+                    if index >= 0:
+                        field_widget.setCurrentIndex(index)
+                elif isinstance(field_widget, QDateEdit):
+                    field_widget.setDate(value)
+                elif isinstance(field_widget, QTimeEdit):
+                    field_widget.setTime(value)
+                elif isinstance(field_widget, QDateTimeEdit):
+                    field_widget.setDateTime(value)
+                elif isinstance(field_widget, QCheckBox):
+                    field_widget.setChecked(bool(value))
+                else:
+                    field_widget.setText(str(value))
 
-        # List to display comments
-        self.comment_list = QListWidget()
-        layout.addWidget(QLabel("Comments"))
-        layout.addWidget(self.comment_list)
-
-        # Input field for adding new comments
-        self.comment_input = QLineEdit()
-        self.comment_input.setPlaceholderText("Add a comment...")
-        layout.addWidget(self.comment_input)
-
-        # Add Comment Button
-        add_comment_button = QPushButton("Add Comment")
-        add_comment_button.clicked.connect(self.add_comment)
-        layout.addWidget(add_comment_button)
-
-        # Scrollable container
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        container = QWidget()
-        container.setLayout(layout)
-        scroll_area.setWidget(container)
-
-        return scroll_area
-
-    def load_comments(self):
-        """Load and display comments related to the instance."""
-        if not self.instance:
-            return
-
-        self.comment_list.clear()
-        comments = session.query(Comment).filter_by(user_id=self.instance.id).all()
-        for comment in comments:
-            item = QListWidgetItem(f"{comment.timestamp}: {comment.content}")
-            self.comment_list.addItem(item)
-
-    def add_comment(self):
-        """Add a new comment."""
-        content = self.comment_input.text().strip()
-        if content and self.instance:
-            try:
-                new_comment = Comment(content=content, user_id=self.instance.id)
-                session.add(new_comment)
-                session.commit()
-                self.load_comments()
-                self.comment_input.clear()
-            except Exception as e:
-                session.rollback()
-                print(f"Error adding comment: {e}")
+    def set_field_editability(self):
+        """Set fields to be editable or non-editable based on editable_fields and non_editable_fields."""
+        for field_name, field_widget in self.fields.items():
+            if self.editable_fields and field_name in self.editable_fields:
+                field_widget.setEnabled(True)
+            elif self.non_editable_fields and field_name in self.non_editable_fields:
+                field_widget.setEnabled(False)
+            elif not self.editable_fields and not self.non_editable_fields:
+                field_widget.setEnabled(True)
+            else:
+                field_widget.setEnabled(field_name in self.editable_fields)
 
     def submit_form(self):
         """Submit form data to the database."""
@@ -180,6 +157,8 @@ class ModelForm(QWidget):
                 setattr(self.instance, field_name, field_widget.time().toPyTime())
             elif isinstance(field_widget, QDateTimeEdit):
                 setattr(self.instance, field_name, field_widget.dateTime().toPyDateTime())
+            elif isinstance(field_widget, QCheckBox):
+                setattr(self.instance, field_name, field_widget.isChecked())
             else:
                 setattr(self.instance, field_name, field_widget.text())
 
@@ -202,10 +181,30 @@ class ModelForm(QWidget):
                 for _, row in df.iterrows():
                     new_entry = self.model_class()
                     for col in model_columns:
-                        setattr(new_entry, col, row[col])
+                        if pd.notnull(row[col]):
+                            setattr(new_entry, col, row[col])
                     session.add(new_entry)
+
                 session.commit()
                 print("Bulk import successful!")
             except Exception as e:
                 session.rollback()
                 print(f"Error during bulk import: {e}")
+
+    def reinitialize(self, instance=None, included_columns=None, excluded_columns=None,
+                     editable_fields=None, non_editable_fields=None, edit_mode=False):
+        """Reinitialize form with new settings and optionally a new instance."""
+        self.instance = instance
+        self.included_columns = included_columns or self.included_columns
+        self.excluded_columns = excluded_columns or self.excluded_columns
+        self.editable_fields = editable_fields or self.editable_fields
+        self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        self.edit_mode = edit_mode
+        self.fields.clear()  # Clear the existing fields dictionary
+
+        # Reset the main layout with the new settings
+        self.set_main_layout()
+
+        # Populate the form if a new instance is provided
+        if self.instance:
+            self.populate_form_from_instance()
