@@ -2,7 +2,7 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QFormLayout, QPushButton, QComboBox, 
     QSpinBox, QDoubleSpinBox, QCheckBox, QDateEdit, QTimeEdit, QDateTimeEdit, 
-    QVBoxLayout, QFileDialog, QHBoxLayout
+    QVBoxLayout, QHBoxLayout, QFileDialog
 )
 from PyQt6.QtCore import Qt, QTime, QDate, QDateTime
 from sqlalchemy import inspect
@@ -17,24 +17,28 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 class ModelForm(QWidget):
-    def __init__(self, model_class, instance=None, related_model_class=None, *args, **kwargs):
+    def __init__(self, model_class, instance=None, related_model_class=None, included_columns=None, excluded_columns=None,
+                 editable_fields=None, non_editable_fields=None, edit_mode=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model_class = model_class
         self.instance = instance
         self.related_model_class = related_model_class  # Additional model for related entries
+        self.edit_mode = edit_mode
+        self.included_columns = included_columns or []
+        self.excluded_columns = excluded_columns or []
+        self.editable_fields = editable_fields or []
+        self.non_editable_fields = non_editable_fields or []
         self.fields = {}
         self.related_entries = []
 
         # Main form layout setup
         self.form_layout = QFormLayout()
         self.set_main_layout()
+        self.setWindowTitle("Edit Form" if self.edit_mode else "Create New Entry")
+        self.setFixedSize(600, 600)
 
-        # Set up window title and size
-        self.setWindowTitle(f"Edit {model_class.__name__}")
-        self.setMinimumSize(500, 600)
-
-        # Populate main form if an instance is provided
+        # Populate form with initial instance if provided
         if self.instance:
             self.populate_form_from_instance()
 
@@ -45,7 +49,7 @@ class ModelForm(QWidget):
             self.form_layout.addRow(self.related_layout)
 
     def set_main_layout(self):
-        """Set up the main layout and build form fields for the primary model."""
+        """Set up the main layout and build form fields."""
         # Clear existing items in the form layout without deleting the layout itself
         while self.form_layout.count():
             item = self.form_layout.takeAt(0)
@@ -55,12 +59,19 @@ class ModelForm(QWidget):
 
         # Build main form fields
         for column in inspect(self.model_class).c:
-            self._add_form_field(column)
+            if self._should_include_column(column.name):
+                self._add_form_field(column)
 
-        # Add Submit Button
-        self.submit_button = QPushButton("Submit")
-        self.submit_button.clicked.connect(self.submit_form)
-        self.form_layout.addWidget(self.submit_button)
+        # Add buttons for Submit and Bulk Import if not in edit mode
+        if not self.edit_mode:
+            self.submit_button = QPushButton("Submit")
+            self.submit_button.clicked.connect(self.submit_form)
+
+            self.bulk_import_button = QPushButton("Bulk Import from CSV")
+            self.bulk_import_button.clicked.connect(self.bulk_import_csv)
+
+            self.form_layout.addWidget(self.submit_button)
+            self.form_layout.addWidget(self.bulk_import_button)
 
         # Set up the main layout if it’s not already set
         if not self.layout():
@@ -68,12 +79,27 @@ class ModelForm(QWidget):
             main_layout.addLayout(self.form_layout)
             self.setLayout(main_layout)
 
+        # Set field editability if in edit mode
+        if self.edit_mode:
+            self.set_field_editability()
+
+    def _should_include_column(self, column_name):
+        """Determine if a column should be included based on included and excluded columns."""
+        if self.included_columns and column_name not in self.included_columns:
+            return False
+        if self.excluded_columns and column_name in self.excluded_columns:
+            return False
+        return True
+
     def _add_form_field(self, column):
-        """Add form fields for each column in the main model."""
         label = QLabel(column.name.capitalize() + ":")
         field = None
 
-        if column.type.python_type == int:
+        options_attr = f"{column.name}_options"
+        if hasattr(self.model_class, options_attr):
+            field = QComboBox()
+            field.addItems(getattr(self.model_class, options_attr))
+        elif column.type.python_type == int:
             field = QSpinBox()
             field.setRange(-999999999, 999999999)
         elif column.type.python_type == float:
@@ -99,18 +125,100 @@ class ModelForm(QWidget):
         self.form_layout.addRow(label, field)
         self.fields[column.name] = field
 
+    def populate_form_from_instance(self):
+        """Populate form fields with data from the provided model instance."""
+        for field_name, field_widget in self.fields.items():
+            value = getattr(self.instance, field_name, None)
+            if value is not None:
+                if isinstance(field_widget, QComboBox):
+                    index = field_widget.findText(str(value))
+                    if index >= 0:
+                        field_widget.setCurrentIndex(index)
+                elif isinstance(field_widget, QDateEdit):
+                    if isinstance(value, datetime):
+                        value = value.date()
+                    field_widget.setDate(QDate(value.year, value.month, value.day))
+                elif isinstance(field_widget, QTimeEdit):
+                    field_widget.setTime(QTime(value.hour, value.minute, value.second))
+                elif isinstance(field_widget, QDateTimeEdit):
+                    field_widget.setDateTime(QDateTime(value))
+                elif isinstance(field_widget, QCheckBox):
+                    field_widget.setChecked(bool(value))
+                else:
+                    field_widget.setText(str(value))
+
+    def set_field_editability(self):
+        """Set fields to be editable or non-editable based on editable_fields and non_editable_fields."""
+        for field_name, field_widget in self.fields.items():
+            if self.editable_fields and field_name in self.editable_fields:
+                field_widget.setEnabled(True)
+            elif self.non_editable_fields and field_name in self.non_editable_fields:
+                field_widget.setEnabled(False)
+            elif not self.editable_fields and not self.non_editable_fields:
+                field_widget.setEnabled(True)
+            else:
+                field_widget.setEnabled(field_name in self.editable_fields)
+
+    def submit_form(self):
+        """Submit form data to the database."""
+        if not self.instance:
+            self.instance = self.model_class()
+
+        for field_name, field_widget in self.fields.items():
+            if isinstance(field_widget, QComboBox):
+                setattr(self.instance, field_name, field_widget.currentText())
+            elif isinstance(field_widget, QDateEdit):
+                setattr(self.instance, field_name, field_widget.date().toPyDate())
+            elif isinstance(field_widget, QTimeEdit):
+                setattr(self.instance, field_name, field_widget.time().toPyTime())
+            elif isinstance(field_widget, QDateTimeEdit):
+                setattr(self.instance, field_name, field_widget.dateTime().toPyDateTime())
+            elif isinstance(field_widget, QCheckBox):
+                setattr(self.instance, field_name, field_widget.isChecked())
+            else:
+                setattr(self.instance, field_name, field_widget.text())
+
+        try:
+            session.add(self.instance)
+            session.commit()
+            print(f"{self.model_class.__name__} added/updated successfully!")
+            self.close()
+        except Exception as e:
+            session.rollback()
+            print(f"Error: {e}")
+
+    def bulk_import_csv(self):
+        """Bulk import data from CSV."""
+        file_name, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
+        if file_name:
+            try:
+                df = pd.read_csv(file_name)
+                model_columns = [col.name for col in inspect(self.model_class).c]
+                for _, row in df.iterrows():
+                    new_entry = self.model_class()
+                    for col in model_columns:
+                        if pd.notnull(row[col]):
+                            setattr(new_entry, col, row[col])
+                    session.add(new_entry)
+
+                session.commit()
+                print("Bulk import successful!")
+            except Exception as e:
+                session.rollback()
+                print(f"Error during bulk import: {e}")
+
     def _create_related_model_section(self):
         """Create UI elements for managing related entries."""
         related_label = QLabel(f"{self.related_model_class.__name__}s")
         self.related_layout.addWidget(related_label)
 
-        # Load existing related entries if the main instance is provided
+        # Add existing related entries if the main instance is provided
         if self.instance:
-            self.related_entries = session.query(self.related_model_class).filter_by(user_id=self.instance.id).all()
-            for related_instance in self.related_entries:
+            related_instances = session.query(self.related_model_class).filter_by(user_id=self.instance.id).all()
+            for related_instance in related_instances:
                 self._add_related_entry_form(related_instance)
 
-        # Add button to add a new related entry
+        # Button to add a new related entry
         add_button = QPushButton(f"Add {self.related_model_class.__name__}")
         add_button.clicked.connect(self._add_new_related_entry)
         self.related_layout.addWidget(add_button)
@@ -120,33 +228,29 @@ class ModelForm(QWidget):
         row_layout = QHBoxLayout()
         form_fields = {}
 
-        # Dynamically create fields for each column in the related model
         for column in inspect(self.related_model_class).c:
-            if column.name == 'id' or column.name == 'user_id':  # Skip ID fields
+            if column.name in ['id', 'user_id']:  # Skip ID fields
                 continue
             field = QLineEdit() if column.type.python_type == str else QSpinBox()
-            field.setPlaceholderText(column.name.capitalize())
             if related_instance:
-                value = getattr(related_instance, column.name, None)
-                field.setText(str(value) if value is not None else "")
+                field.setText(str(getattr(related_instance, column.name, '')))
             row_layout.addWidget(field)
             form_fields[column.name] = field
 
-        # Add delete button for each related entry row
+        # Delete button
         delete_button = QPushButton("Delete")
         delete_button.clicked.connect(lambda: self._remove_related_entry(row_layout, related_instance))
         row_layout.addWidget(delete_button)
 
-        # Store the form fields in the layout and add it to the main layout
         self.related_layout.addLayout(row_layout)
         self.related_entries.append((related_instance, form_fields))
 
     def _add_new_related_entry(self):
-        """Create a new blank related entry form row."""
+        """Create a new related entry form row."""
         self._add_related_entry_form()
 
     def _remove_related_entry(self, layout, related_instance=None):
-        """Remove a related entry row and delete it from the database if it exists."""
+        """Remove a related entry row."""
         if related_instance:
             session.delete(related_instance)
         while layout.count():
@@ -156,48 +260,20 @@ class ModelForm(QWidget):
                 widget.deleteLater()
         self.related_entries = [entry for entry in self.related_entries if entry[0] != related_instance]
 
-    def populate_form_from_instance(self):
-        """Populate main form fields with data from the instance."""
-        for field_name, field_widget in self.fields.items():
-            value = getattr(self.instance, field_name, None)
-            if isinstance(field_widget, QLineEdit):
-                field_widget.setText(str(value) if value is not None else "")
-            elif isinstance(field_widget, QSpinBox) and value is not None:
-                field_widget.setValue(int(value))
-            elif isinstance(field_widget, QDoubleSpinBox) and value is not None:
-                field_widget.setValue(float(value))
-            elif isinstance(field_widget, QCheckBox):
-                field_widget.setChecked(bool(value))
-            elif isinstance(field_widget, QDateEdit) and isinstance(value, date):
-                field_widget.setDate(QDate(value.year, value.month, value.day))
-            elif isinstance(field_widget, QTimeEdit) and isinstance(value, time):
-                field_widget.setTime(QTime(value.hour, value.minute, value.second))
-            elif isinstance(field_widget, QDateTimeEdit) and isinstance(value, datetime):
-                field_widget.setDateTime(QDateTime(value))
+    def reinitialize(self, instance=None, included_columns=None, excluded_columns=None,
+                     editable_fields=None, non_editable_fields=None, edit_mode=False):
+        """Reinitialize form with new settings and optionally a new instance."""
+        self.instance = instance
+        self.included_columns = included_columns or self.included_columns
+        self.excluded_columns = excluded_columns or self.excluded_columns
+        self.editable_fields = editable_fields or self.editable_fields
+        self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        self.edit_mode = edit_mode
+        self.fields.clear()  # Clear the existing fields dictionary
 
-    def submit_form(self):
-        """Save the main instance and related entries to the database."""
-        if not self.instance:
-            self.instance = self.model_class()
+        # Reset the main layout with the new settings
+        self.set_main_layout()
 
-        # Update main model instance fields
-        for field_name, field_widget in self.fields.items():
-            value = field_widget.text() if isinstance(field_widget, QLineEdit) else field_widget.value()
-            setattr(self.instance, field_name, value)
-
-        # Commit the main model instance
-        session.add(self.instance)
-        session.commit()
-
-        # Update related model instances
-        for related_instance, form_fields in self.related_entries:
-            if not related_instance:
-                related_instance = self.related_model_class()
-                related_instance.user_id = self.instance.id
-            for field_name, field_widget in form_fields.items():
-                setattr(related_instance, field_name, field_widget.text())
-            session.add(related_instance)
-
-        session.commit()
-        print("Form submitted successfully!")
-        self.close()
+        # Populate the form if a new instance is provided
+        if self.instance:
+            self.populate_form_from_instance()
