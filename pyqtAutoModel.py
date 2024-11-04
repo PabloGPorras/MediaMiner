@@ -505,7 +505,7 @@ class ModelForm(QWidget):
         self.related_entries = [entry for entry in self.related_entries if entry[0] != related_instance]
 
     def reinitialize(self, instance=None, included_columns=None, excluded_columns=None,
-                     editable_fields=None, non_editable_fields=None, edit_mode=False):
+                     editable_fields=None, non_editable_fields=None, edit_mode=False, related_form=None):
         """Reinitialize form with new settings and optionally a new instance."""
         self.instance = instance
         self.included_columns = included_columns or self.included_columns
@@ -513,11 +513,17 @@ class ModelForm(QWidget):
         self.editable_fields = editable_fields or self.editable_fields
         self.non_editable_fields = non_editable_fields or self.non_editable_fields
         self.edit_mode = edit_mode
+        self.related_form = related_form  # Update the related form if provided
         self.fields.clear()  # Clear the existing fields dictionary
-
+    
         # Reset the main layout with the new settings
         self.set_main_layout()
-
+    
         # Populate the form if a new instance is provided
         if self.instance:
             self.populate_form_from_instance()
+    
+        # Re-add the related form if it is provided
+        if self.related_form:
+            self.form_layout.addRow(QLabel(f"{self.related_form.model_class.__name__}s"))
+            self.form_layout.addRow(self.related_form)
