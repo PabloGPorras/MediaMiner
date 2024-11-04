@@ -120,25 +120,41 @@ class ModelForm(QWidget):
         self.form_layout.addRow(label, field)
         self.fields[column.name] = field
 
-    def populate_form_from_instance(self):
-        """Populate form fields with data from the provided model instance."""
-        for field_name, field_widget in self.fields.items():
-            value = getattr(self.instance, field_name, None)
-            if value is not None:
-                if isinstance(field_widget, QComboBox):
-                    index = field_widget.findText(value)
-                    if index >= 0:
-                        field_widget.setCurrentIndex(index)
-                elif isinstance(field_widget, QDateEdit):
-                    field_widget.setDate(value)
-                elif isinstance(field_widget, QTimeEdit):
-                    field_widget.setTime(value)
-                elif isinstance(field_widget, QDateTimeEdit):
-                    field_widget.setDateTime(value)
-                elif isinstance(field_widget, QCheckBox):
-                    field_widget.setChecked(bool(value))
+def populate_form_from_instance(self):
+    """Populate form fields with data from the provided model instance."""
+    for field_name, field_widget in self.fields.items():
+        value = getattr(self.instance, field_name, None)  # Fetch the actual value
+
+        if value is not None:
+            # Handle QComboBox
+            if isinstance(field_widget, QComboBox):
+                index = field_widget.findText(str(value))
+                if index >= 0:
+                    field_widget.setCurrentIndex(index)
+            # Handle QDateEdit for date values
+            elif isinstance(field_widget, QDateEdit):
+                if isinstance(value, datetime):
+                    value = value.date()  # Convert datetime to date
+                elif isinstance(value, QDate):
+                    pass  # Leave as is if it's already a QDate
                 else:
-                    field_widget.setText(str(value))
+                    value = QDate(value.year, value.month, value.day)  # Convert date to QDate
+                field_widget.setDate(value)
+            # Handle QTimeEdit for time values
+            elif isinstance(field_widget, QTimeEdit):
+                if isinstance(value, time):
+                    field_widget.setTime(QTime(value.hour, value.minute, value.second))
+            # Handle QDateTimeEdit for datetime values
+            elif isinstance(field_widget, QDateTimeEdit):
+                if isinstance(value, datetime):
+                    field_widget.setDateTime(QDateTime(value))
+            # Handle QCheckBox for boolean values
+            elif isinstance(field_widget, QCheckBox):
+                field_widget.setChecked(bool(value))
+            # Handle QLineEdit and other text-based fields
+            else:
+                field_widget.setText(str(value))
+
 
     def set_field_editability(self):
         """Set fields to be editable or non-editable based on editable_fields and non_editable_fields."""
