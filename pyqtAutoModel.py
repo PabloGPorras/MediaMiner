@@ -38,6 +38,7 @@ class ModelForm(QWidget):
 
     def set_main_layout(self):
         """Set up the main layout and build form fields."""
+        # Clear existing items in the form layout without deleting the layout itself
         while self.form_layout.count():
             item = self.form_layout.takeAt(0)
             widget = item.widget()
@@ -197,3 +198,27 @@ class ModelForm(QWidget):
             except Exception as e:
                 session.rollback()
                 print(f"Error during bulk import: {e}")
+
+    def reinitialize(self, instance=None, included_columns=None, excluded_columns=None,
+                     editable_fields=None, non_editable_fields=None, edit_mode=False, related_form=None):
+        """Reinitialize form with new settings and optionally a new instance."""
+        self.instance = instance
+        self.included_columns = included_columns or self.included_columns
+        self.excluded_columns = excluded_columns or self.excluded_columns
+        self.editable_fields = editable_fields or self.editable_fields
+        self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        self.edit_mode = edit_mode
+        self.related_form = related_form  # Update the related form if provided
+        self.fields.clear()  # Clear the existing fields dictionary
+
+        # Reset the main layout with the new settings
+        self.set_main_layout()
+
+        # Populate the form if a new instance is provided
+        if self.instance:
+            self.populate_form_from_instance()
+
+        # Re-add the related form if it is provided
+        if self.related_form:
+            self.form_layout.addRow(QLabel(f"{self.related_form.model_class.__name__}s"))
+            self.form_layout.addRow(self.related_form)
