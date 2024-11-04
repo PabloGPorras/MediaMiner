@@ -40,41 +40,43 @@ class ModelForm(QWidget):
         if self.instance:
             self.populate_form_from_instance()
 
-def set_main_layout(self):
-    """Set up the main layout and build form fields."""
-    # Clear existing items in the form layout without deleting the layout itself
-    while self.form_layout.count():
-        item = self.form_layout.takeAt(0)
-        widget = item.widget()
-        if widget is not None:
-            widget.deleteLater()
+    def set_main_layout(self):
+        """Set up the main layout and build form fields."""
+        # Clear existing items in the form layout without deleting the layout itself
+        while self.form_layout.count():
+            item = self.form_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
 
-    # Build form fields in the layout
-    for column in inspect(self.model_class).c:
-        if self._should_include_column(column.name):
-            self._add_form_field(column)
+        # Build form fields in the layout
+        for column in inspect(self.model_class).c:
+            if self._should_include_column(column.name):
+                print(f"Adding field for column: {column.name}")  # Debug print
+                self._add_form_field(column)
+            else:
+                print(f"Skipping column: {column.name}")  # Debug print
 
-    # Add buttons for Submit and Bulk Import if not in edit mode
-    if not self.edit_mode:
-        self.submit_button = QPushButton("Submit")
-        self.submit_button.clicked.connect(self.submit_form)
+        # Add buttons for Submit and Bulk Import if not in edit mode
+        if not self.edit_mode:
+            self.submit_button = QPushButton("Submit")
+            self.submit_button.clicked.connect(self.submit_form)
 
-        self.bulk_import_button = QPushButton("Bulk Import from CSV")
-        self.bulk_import_button.clicked.connect(self.bulk_import_csv)
+            self.bulk_import_button = QPushButton("Bulk Import from CSV")
+            self.bulk_import_button.clicked.connect(self.bulk_import_csv)
 
-        self.form_layout.addWidget(self.submit_button)
-        self.form_layout.addWidget(self.bulk_import_button)
+            self.form_layout.addWidget(self.submit_button)
+            self.form_layout.addWidget(self.bulk_import_button)
 
-    # Set up the main layout if it’s not already set
-    if not self.layout():
-        main_layout = QVBoxLayout()
-        main_layout.addLayout(self.form_layout)
-        self.setLayout(main_layout)
+        # Set up the main layout if it’s not already set
+        if not self.layout():
+            main_layout = QVBoxLayout()
+            main_layout.addLayout(self.form_layout)
+            self.setLayout(main_layout)
 
-    # Set field editability if in edit mode
-    if self.edit_mode:
-        self.set_field_editability()
-
+        # Set field editability if in edit mode
+        if self.edit_mode:
+            self.set_field_editability()
 
     def _should_include_column(self, column_name):
         """Determine if a column should be included based on included and excluded columns."""
@@ -215,4 +217,3 @@ def set_main_layout(self):
         # Populate the form if a new instance is provided
         if self.instance:
             self.populate_form_from_instance()
-        
