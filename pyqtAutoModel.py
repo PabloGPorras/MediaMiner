@@ -11,107 +11,45 @@ from models import engine
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class RelatedModelForm(QWidget):
-    """A form to handle individual related model entries."""
-    def __init__(self, related_model_class, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.related_model_class = related_model_class
-        self.fields = {}
-        self.form_layout = QFormLayout()
-        self.setLayout(self.form_layout)
-        self.build_form()
-
-    def build_form(self):
-        """Dynamically build form fields based on related model columns."""
-        for column in inspect(self.related_model_class).c:
-            label = QLabel(column.name.capitalize() + ":")
-            field = self.create_field(column)
-            self.form_layout.addRow(label, field)
-            self.fields[column.name] = field
-
-    def create_field(self, column):
-        """Create an appropriate field based on column type."""
-        options_attr = f"{column.name}_options"
-        if hasattr(self.related_model_class, options_attr):
-            field = QComboBox()
-            field.addItems(getattr(self.related_model_class, options_attr))
-        elif column.type.python_type == int:
-            field = QSpinBox()
-            field.setRange(-999999999, 999999999)
-        elif column.type.python_type == float:
-            field = QDoubleSpinBox()
-            field.setRange(-999999999.99, 999999999.99)
-        elif column.type.python_type == bool:
-            field = QCheckBox()
-        elif column.type.python_type == date:
-            field = QDateEdit()
-            field.setDate(QDate.currentDate())
-            field.setCalendarPopup(True)
-        elif column.type.python_type == time:
-            field = QTimeEdit()
-            field.setTime(QTime.currentTime())
-        elif column.type.python_type == datetime:
-            field = QDateTimeEdit()
-            field.setDateTime(QDateTime.currentDateTime())
-            field.setCalendarPopup(True)
-        else:
-            field = QLineEdit()
-        return field
-
-    def collect_data(self):
-        """Collect data from form fields into a dictionary."""
-        data = {}
-        for field_name, field_widget in self.fields.items():
-            if isinstance(field_widget, QComboBox):
-                data[field_name] = field_widget.currentText()
-            elif isinstance(field_widget, QDateEdit):
-                data[field_name] = field_widget.date().toPyDate()
-            elif isinstance(field_widget, QTimeEdit):
-                data[field_name] = field_widget.time().toPyTime()
-            elif isinstance(field_widget, QDateTimeEdit):
-                data[field_name] = field_widget.dateTime().toPyDateTime()
-            elif isinstance(field_widget, QCheckBox):
-                data[field_name] = field_widget.isChecked()
-            else:
-                data[field_name] = field_widget.text()
-        return data
-
-
 class ModelForm(QWidget):
-    def __init__(self, model_class, related_model_class=None, instance=None, *args, **kwargs):
+    def __init__(self, primary_model_class, related_model_class=None, primary_instance=None, 
+                 included_columns=None, excluded_columns=None,
+                 editable_fields=None, non_editable_fields=None, edit_mode=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model_class = model_class
-        self.instance = instance
+        self.primary_model_class = primary_model_class
         self.related_model_class = related_model_class
-        self.fields = {}
-        self.related_forms = []
+        self.primary_instance = primary_instance
+        self.edit_mode = edit_mode
+        self.included_columns = included_columns or []
+        self.excluded_columns = excluded_columns or []
+        self.editable_fields = editable_fields or []
+        self.non_editable_fields = non_editable_fields or []
+        self.primary_fields = {}
+        self.related_forms = []  # Track instances of related forms for dynamic management
 
-        # Main form layout setup
+        # Main layout
         self.form_layout = QFormLayout()
         self.set_main_layout()
-        self.setWindowTitle("Edit Form" if self.instance else "Create New Entry")
-        self.setFixedSize(600, 600)
+        self.setWindowTitle("Edit Form" if self.edit_mode else "Create New Entry")
+        self.setFixedSize(700, 700)
 
         # Populate form with initial instance if provided
-        if self.instance:
+        if self.primary_instance:
             self.populate_form_from_instance()
 
     def set_main_layout(self):
-        """Set up the main layout and build form fields."""
+        """Set up the main layout and build form fields for both primary and related models."""
+        # Clear existing items in the form layout without deleting the layout itself
         while self.form_layout.count():
             item = self.form_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Build main form fields
-        for column in inspect(self.model_class).c:
-            label = QLabel(column.name.capitalize() + ":")
-            field = self.create_field(column)
-            self.form_layout.addRow(label, field)
-            self.fields[column.name] = field
+        # Build primary model fields
+        self.build_model_section(self.primary_model_class, self.primary_fields, "Primary Model Fields")
 
-        # Add "Add Related" button and related forms area if there’s a related model
+        # Add "Add Related Entry" button and related forms area if there’s a related model
         if self.related_model_class:
             self.add_related_button = QPushButton("Add Related Entry")
             self.add_related_button.clicked.connect(self.add_related_form)
@@ -135,12 +73,37 @@ class ModelForm(QWidget):
         main_layout.addLayout(self.form_layout)
         self.setLayout(main_layout)
 
+    def build_model_section(self, model_class, fields_dict, section_title):
+        """Helper to build fields for a specific model section."""
+        self.form_layout.addRow(QLabel(section_title))  # Add section title
+
+        for column in inspect(model_class).c:
+            if self._should_include_column(column.name):
+                label = QLabel(column.name.capitalize() + ":")
+                field = self.create_field(column)
+                self.form_layout.addRow(label, field)
+                fields_dict[column.name] = field
+
+                # Set field editability based on provided configurations
+                if column.name in self.editable_fields:
+                    field.setEnabled(True)
+                elif column.name in self.non_editable_fields:
+                    field.setEnabled(False)
+
+    def _should_include_column(self, column_name):
+        """Determine if a column should be included based on included and excluded columns."""
+        if self.included_columns and column_name not in self.included_columns:
+            return False
+        if self.excluded_columns and column_name in self.excluded_columns:
+            return False
+        return True
+
     def create_field(self, column):
         """Create an appropriate field based on column type."""
         options_attr = f"{column.name}_options"
-        if hasattr(self.model_class, options_attr):
+        if hasattr(self.primary_model_class, options_attr):
             field = QComboBox()
-            field.addItems(getattr(self.model_class, options_attr))
+            field.addItems(getattr(self.primary_model_class, options_attr))
         elif column.type.python_type == int:
             field = QSpinBox()
             field.setRange(-999999999, 999999999)
@@ -165,9 +128,9 @@ class ModelForm(QWidget):
         return field
 
     def populate_form_from_instance(self):
-        """Populate form fields with data from the provided model instance."""
-        for field_name, field_widget in self.fields.items():
-            value = getattr(self.instance, field_name, None)
+        """Populate primary form fields with data from the provided model instance."""
+        for field_name, field_widget in self.primary_fields.items():
+            value = getattr(self.primary_instance, field_name, None)
             if value is not None:
                 if isinstance(field_widget, QComboBox):
                     index = field_widget.findText(str(value))
@@ -206,29 +169,47 @@ class ModelForm(QWidget):
         form_container.deleteLater()
         self.related_forms.remove(related_form)
 
-    def submit_form(self):
-        """Submit form data for the main model and all related forms to the database."""
-        if not self.instance:
-            self.instance = self.model_class()
+    def reinitialize(self, primary_instance=None, included_columns=None, excluded_columns=None,
+                     editable_fields=None, non_editable_fields=None):
+        """Reinitialize form with new settings and optionally a new instance."""
+        self.primary_instance = primary_instance
+        self.included_columns = included_columns or self.included_columns
+        self.excluded_columns = excluded_columns or self.excluded_columns
+        self.editable_fields = editable_fields or self.editable_fields
+        self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        self.primary_fields.clear()  # Clear the existing fields dictionary
 
-        for field_name, field_widget in self.fields.items():
+        # Reset the main layout with the new settings
+        self.set_main_layout()
+
+        # Populate the form if a new instance is provided
+        if self.primary_instance:
+            self.populate_form_from_instance()
+
+    def submit_form(self):
+        """Submit form data for the primary model and all related forms to the database."""
+        if not self.primary_instance:
+            self.primary_instance = self.primary_model_class()
+
+        # Collect data from the primary model form fields
+        for field_name, field_widget in self.primary_fields.items():
             if isinstance(field_widget, QComboBox):
-                setattr(self.instance, field_name, field_widget.currentText())
+                setattr(self.primary_instance, field_name, field_widget.currentText())
             elif isinstance(field_widget, QDateEdit):
-                setattr(self.instance, field_name, field_widget.date().toPyDate())
+                setattr(self.primary_instance, field_name, field_widget.date().toPyDate())
             elif isinstance(field_widget, QTimeEdit):
-                setattr(self.instance, field_name, field_widget.time().toPyTime())
+                setattr(self.primary_instance, field_name, field_widget.time().toPyTime())
             elif isinstance(field_widget, QDateTimeEdit):
-                setattr(self.instance, field_name, field_widget.dateTime().toPyDateTime())
+                setattr(self.primary_instance, field_name, field_widget.dateTime().toPyDateTime())
             elif isinstance(field_widget, QCheckBox):
-                setattr(self.instance, field_name, field_widget.isChecked())
+                setattr(self.primary_instance, field_name, field_widget.isChecked())
             else:
-                setattr(self.instance, field_name, field_widget.text())
+                setattr(self.primary_instance, field_name, field_widget.text())
 
         try:
-            session.add(self.instance)
+            session.add(self.primary_instance)
             session.commit()
-            print(f"{self.model_class.__name__} added/updated successfully!")
+            print(f"{self.primary_model_class.__name__} added/updated successfully!")
 
             # Commit all related model instances
             for related_form in self.related_forms:
