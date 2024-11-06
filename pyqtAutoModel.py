@@ -123,12 +123,15 @@ class ModelForm(QWidget):
                 self.related_forms_layout.addWidget(form_container)  # Add to related_forms_layout
                 self.related_forms.append(related_form)
                 
-    def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None):
-        """Update visibility and editability of form fields."""
+    def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None, edit_mode=None):
+        """Update visibility, editability, and edit mode of form fields."""
+        # Update parameters if provided
         self.included_columns = included_columns or self.included_columns
         self.excluded_columns = excluded_columns or self.excluded_columns
         self.editable_fields = editable_fields or self.editable_fields
         self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        if edit_mode is not None:
+            self.edit_mode = edit_mode  # Update edit mode if provided
 
         for column_name, field in self.primary_fields.items():
             # Update visibility
@@ -137,10 +140,10 @@ class ModelForm(QWidget):
             else:
                 field.hide()
 
-            # Update editability
-            if column_name in self.editable_fields:
+            # Update editability based on edit_mode
+            if self.edit_mode and column_name in self.editable_fields:
                 field.setReadOnly(False)
-            elif column_name in self.non_editable_fields:
+            else:
                 field.setReadOnly(True)
 
     def submit_form(self):
