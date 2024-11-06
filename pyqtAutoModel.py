@@ -281,6 +281,29 @@ class RelatedModelForm(QWidget):
                 self.form_layout.addRow(QLabel(column.name.capitalize()), field)
                 self.fields[column.name] = field
 
+    def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None, edit_mode=None):
+        """Update visibility and editability of form fields."""
+        # Update parameters if provided
+        self.included_columns = included_columns or self.included_columns
+        self.excluded_columns = excluded_columns or self.excluded_columns
+        self.editable_fields = editable_fields or self.editable_fields
+        self.non_editable_fields = non_editable_fields or self.non_editable_fields
+        if edit_mode is not None:
+            self.edit_mode = edit_mode  # Update edit mode if provided
+
+        for column_name, field in self.fields.items():
+            # Update visibility
+            if self._should_include_column(column_name, self.included_columns, self.excluded_columns):
+                field.show()
+            else:
+                field.hide()
+
+            # Update editability based on edit_mode
+            if self.edit_mode and column_name in self.editable_fields:
+                field.setReadOnly(False)
+            else:
+                field.setReadOnly(True)
+                
     def _should_include_column(self, column_name, included_columns, excluded_columns):
         """Determine if a column should be included based on included/excluded columns."""
         if included_columns and column_name not in included_columns:
