@@ -123,9 +123,11 @@ class ModelForm(QWidget):
                 self.related_forms_layout.addWidget(form_container)  # Add to related_forms_layout
                 self.related_forms.append(related_form)
                 
-    def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None, edit_mode=None):
-        """Update visibility, editability, and edit mode of form fields."""
-        # Update parameters if provided
+    def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None,
+                      edit_mode=None, related_included_columns=None, related_excluded_columns=None, 
+                      related_editable_fields=None, related_non_editable_fields=None, related_edit_mode=None):
+        """Update visibility, editability, and edit mode of form fields and related entries."""
+        # Update primary model fields
         self.included_columns = included_columns or self.included_columns
         self.excluded_columns = excluded_columns or self.excluded_columns
         self.editable_fields = editable_fields or self.editable_fields
@@ -145,6 +147,24 @@ class ModelForm(QWidget):
                 field.setReadOnly(False)
             else:
                 field.setReadOnly(True)
+
+        # Update related model fields
+        self.related_included_columns = related_included_columns or self.related_included_columns
+        self.related_excluded_columns = related_excluded_columns or self.related_excluded_columns
+        self.related_editable_fields = related_editable_fields or self.related_editable_fields
+        self.related_non_editable_fields = related_non_editable_fields or self.related_non_editable_fields
+        if related_edit_mode is not None:
+            self.related_edit_mode = related_edit_mode  # Update related edit mode if provided
+
+        # Update each related form's fields
+        for related_form in self.related_forms:
+            related_form.update_fields(
+                included_columns=self.related_included_columns,
+                excluded_columns=self.related_excluded_columns,
+                editable_fields=self.related_editable_fields,
+                non_editable_fields=self.related_non_editable_fields,
+                edit_mode=self.related_edit_mode
+            )
 
     def submit_form(self):
         """Submit form data for both primary and related forms."""
