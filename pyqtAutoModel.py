@@ -121,7 +121,6 @@ class ModelFormFields(QWidget):
 
 
 class ModelForm(QWidget):
-    """Manages the layout and controls (submit, add, delete) for the model form."""
     def __init__(self, form_fields, *args, **kwargs):
         """
         Initialize ModelForm with an array of ModelFormFields instances.
@@ -187,6 +186,7 @@ class ModelForm(QWidget):
         if instance_data:
             form_instance.load_data(instance_data)
 
+        # Create a container widget to hold both the form and the delete button
         form_container_widget = QWidget()
         form_layout = QVBoxLayout(form_container_widget)
         form_layout.addWidget(form_instance)
@@ -196,13 +196,14 @@ class ModelForm(QWidget):
         delete_button.clicked.connect(lambda: self.remove_form_instance(form_container_widget, title))
         form_layout.addWidget(delete_button)
 
+        # Add the container widget to the form container layout
         self.forms_container[title].addWidget(form_container_widget)
-        self.forms_container[title].addWidget(form_instance)
 
     def remove_form_instance(self, form_container_widget, title):
         """Remove a specific form instance from the layout."""
+        # Find and remove the widget from the layout
         self.forms_container[title].removeWidget(form_container_widget)
-        form_container_widget.deleteLater()
+        form_container_widget.deleteLater()  # Properly delete the widget
 
     def load_data(self, instances_data):
         """Load data for each form instance based on the provided instances_data."""
