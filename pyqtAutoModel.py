@@ -123,10 +123,13 @@ class ModelForm(QWidget):
                 self.related_forms_layout.addWidget(form_container)  # Add to related_forms_layout
                 self.related_forms.append(related_form)
                 
+
     def update_fields(self, included_columns=None, excluded_columns=None, editable_fields=None, non_editable_fields=None,
                       edit_mode=None, related_included_columns=None, related_excluded_columns=None, 
-                      related_editable_fields=None, related_non_editable_fields=None, related_edit_mode=None):
-        """Update visibility, editability, and edit mode of form fields and related entries."""
+                      related_editable_fields=None, related_non_editable_fields=None, related_edit_mode=None,
+                      show_add_related_button=None, show_submit_button=None):
+        """Update visibility, editability, and visibility of buttons in form fields and related entries."""
+        
         # Update primary model fields
         self.included_columns = included_columns or self.included_columns
         self.excluded_columns = excluded_columns or self.excluded_columns
@@ -165,6 +168,19 @@ class ModelForm(QWidget):
                 non_editable_fields=self.related_non_editable_fields,
                 edit_mode=self.related_edit_mode
             )
+
+        # Update button visibility
+        if show_add_related_button is not None:
+            if show_add_related_button:
+                self.add_related_button.show()
+            else:
+                self.add_related_button.hide()
+
+        if show_submit_button is not None:
+            if show_submit_button:
+                self.submit_button.show()
+            else:
+                self.submit_button.hide()
 
     def submit_form(self):
         """Submit form data for both primary and related forms."""
