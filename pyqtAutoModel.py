@@ -165,12 +165,12 @@ class ModelForm(QWidget):
         section_layout.addLayout(form_container)
         
         # Add initial form instance
-        self.add_form_instance(form_fields, title)
+        self.add_form_instance(form_fields, title, duplicatable=duplicatable)
 
-        # Add button for adding/removing forms if duplicatable
+        # Add button for adding forms if duplicatable
         if duplicatable:
             add_button = QPushButton(f"Add {title}")
-            add_button.clicked.connect(lambda: self.add_form_instance(form_fields, title))
+            add_button.clicked.connect(lambda: self.add_form_instance(form_fields, title, duplicatable=True))
             section_layout.addWidget(add_button)
 
         self.main_layout.addLayout(section_layout)
@@ -186,7 +186,7 @@ class ModelForm(QWidget):
         if instance_data:
             form_instance.load_data(instance_data)
 
-        # Create a container widget to hold the form (and delete button if duplicatable)
+        # Create a container widget to hold both the form and the delete button (if duplicatable)
         form_container_widget = QWidget()
         form_layout = QVBoxLayout(form_container_widget)
         form_layout.addWidget(form_instance)
