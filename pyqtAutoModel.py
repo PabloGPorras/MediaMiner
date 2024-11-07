@@ -175,7 +175,7 @@ class ModelForm(QWidget):
 
         self.main_layout.addLayout(section_layout)
 
-    def add_form_instance(self, form_fields, title, instance_data=None):
+    def add_form_instance(self, form_fields, title, instance_data=None, duplicatable=False):
         """Add a new instance of ModelFormFields to the container layout."""
         form_instance = ModelFormFields(
             model_class=form_fields.model_class,
@@ -186,15 +186,16 @@ class ModelForm(QWidget):
         if instance_data:
             form_instance.load_data(instance_data)
 
-        # Create a container widget to hold both the form and the delete button
+        # Create a container widget to hold the form (and delete button if duplicatable)
         form_container_widget = QWidget()
         form_layout = QVBoxLayout(form_container_widget)
         form_layout.addWidget(form_instance)
 
-        # Delete button for duplicatable form instance
-        delete_button = QPushButton("Delete")
-        delete_button.clicked.connect(lambda: self.remove_form_instance(form_container_widget, title))
-        form_layout.addWidget(delete_button)
+        # Only add the delete button if the form is duplicatable
+        if duplicatable:
+            delete_button = QPushButton("Delete")
+            delete_button.clicked.connect(lambda: self.remove_form_instance(form_container_widget, title))
+            form_layout.addWidget(delete_button)
 
         # Add the container widget to the form container layout
         self.forms_container[title].addWidget(form_container_widget)
@@ -221,7 +222,8 @@ class ModelForm(QWidget):
             # Add new instances for each item in instance_data_list
             for instance_data in instance_data_list:
                 form_fields = next(f['form'] for f in self.form_fields if f['title'] == title)
-                self.add_form_instance(form_fields, title, instance_data)
+                self.add_form_instance(form_fields, title, instance_data, duplicatable=(title == "Relatives"))
+
 
     def submit_form(self):
         """Submit form data for each form instance in ModelForm."""
