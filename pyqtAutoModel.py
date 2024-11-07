@@ -268,10 +268,14 @@ class ModelForm(QWidget):
         if form_container:
             form_fields = next((f['form'] for f in self.form_fields if f['title'] == title), None)
             if form_fields:
+                # Update the included_columns and editable_fields if provided
                 if included_columns is not None:
                     form_fields.update_included_columns(included_columns)
                 if editable_fields is not None:
                     form_fields.update_editable_fields(editable_fields)
+
+                # Rebuild the fields to apply changes
+                form_fields.build_fields()
 
 
 # Initialize form fields
