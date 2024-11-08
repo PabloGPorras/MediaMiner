@@ -72,9 +72,29 @@ class ModelFormFields(QWidget):
                     field_widget.setDateTime(QDateTime(value.year, value.month, value.day, value.hour, value.minute, value.second))
 
 
-    def collect_data(self):
-        """Collect data from form fields and return as a dictionary."""
-        return {field_name: field_widget.text() for field_name, field_widget in self.fields.items()}
+def collect_data(self):
+    """Collect data from form fields and return as a dictionary with appropriate data types."""
+    data = {}
+    for field_name, field_widget in self.fields.items():
+        if isinstance(field_widget, QLineEdit):
+            data[field_name] = field_widget.text()
+        elif isinstance(field_widget, QComboBox):
+            data[field_name] = field_widget.currentText()
+        elif isinstance(field_widget, QSpinBox) or isinstance(field_widget, QDoubleSpinBox):
+            data[field_name] = field_widget.value()
+        elif isinstance(field_widget, QCheckBox):
+            data[field_name] = field_widget.isChecked()
+        elif isinstance(field_widget, QDateEdit):
+            data[field_name] = field_widget.date().toPyDate()  # Converts QDate to Python date
+        elif isinstance(field_widget, QDateTimeEdit):
+            data[field_name] = field_widget.dateTime().toPyDateTime()  # Converts QDateTime to Python datetime
+        elif isinstance(field_widget, QTimeEdit):
+            data[field_name] = field_widget.time().toPyTime()  # Converts QTime to Python time
+        else:
+            data[field_name] = field_widget.text()  # Fallback to text for unknown widgets
+
+    return data
+
 
     def create_field(self, column, editable=True):
         options_attr = f"{column.name}_options"
