@@ -1,22 +1,21 @@
 from datetime import date, time
 import datetime
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFormLayout, QLabel, QLineEdit, QPushButton, QScrollArea
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, inspect
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QFormLayout, QVBoxLayout, QPushButton, QComboBox, 
-    QSpinBox, QDoubleSpinBox, QCheckBox, QDateEdit, QTimeEdit, QDateTimeEdit, QFileDialog, QScrollArea, QHBoxLayout
+    QWidget, QVBoxLayout, QFormLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
+    QComboBox, QSpinBox, QDoubleSpinBox, QCheckBox, QDateEdit, QTimeEdit, QDateTimeEdit,
+    QFileDialog, QScrollArea, QHBoxLayout, QApplication
 )
 from PyQt6.QtCore import QDate, QTime, QDateTime
-
+from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy import create_engine, inspect
+import sys
 from models import User, UserRelatives
+
 
 DATABASE_URI = 'sqlite:///your_database.db'
 engine = create_engine(DATABASE_URI, echo=True)
 Base = declarative_base()
 session = Session(bind=engine)
-
 
 class ModelFormFields(QWidget):
     """Handles creating and managing fields for a given SQLAlchemy model."""
@@ -263,20 +262,28 @@ class ModelForm(QWidget):
             session.close()
 
     def update_form_fields(self, title, included_columns=None, editable_fields=None):
-        """Update included and editable fields for a specific form section by title."""
-        form_container = self.forms_container.get(title)
-        if form_container:
-            form_fields = next((f['form'] for f in self.form_fields if f['title'] == title), None)
-            if form_fields:
-                # Update the included_columns and editable_fields if provided
-                if included_columns is not None:
-                    form_fields.update_included_columns(included_columns)
-                if editable_fields is not None:
-                    form_fields.update_editable_fields(editable_fields)
+            form_container = self.forms_container.get(title)
+            if form_container:
+                form_fields = next((f['form'] for f in self.form_fields if f['title'] == title), None)
+                if form_fields:
+                    # Update the included_columns and editable_fields if provided
+                    if included_columns is not None:
+                        form_fields.update_included_columns(included_columns)
+                    if editable_fields is not None:
+                        form_fields.update_editable_fields(editable_fields)
 
-                # Rebuild the fields to apply changes
-                form_fields.build_fields()
+                    # Remove and re-add the form to refresh the UI
+                    for i in reversed(range(form_container.count())):
+                        widget = form_container.itemAt(i).widget()
+                        if widget:
+                            widget.deleteLater()
 
+                    # Re-add updated form instance
+                    self.add_form_instance(form_fields, title, duplicatable=(title == "Relatives"))
+
+
+# Initialize QApplication
+app = QApplication(sys.argv)
 
 # Initialize form fields
 user_form_fields = ModelFormFields(User, included_columns=['name', 'email'], editable_fields=['name'])
@@ -288,6 +295,8 @@ form = ModelForm([
     {'form': relative_form_fields, 'title': 'Relatives', 'duplicatable': True}
 ])
 
-# Update included columns and editable fields dynamically
-form.update_form_fields('User', included_columns=['name', 'email', 'address'], editable_fields=['name', 'address'])
-form.update_form_fields('Relatives', included_columns=['relation', 'name', 'age'], editable_fields=['name', 'age'])
+# Show the form
+form.show()
+
+# Execute the application
+sys.exit(app.exec())
