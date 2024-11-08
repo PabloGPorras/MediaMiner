@@ -50,7 +50,27 @@ class ModelFormFields(QWidget):
         """Load data from an instance into the form fields."""
         for field_name, field_widget in self.fields.items():
             value = getattr(instance, field_name, "")
-            field_widget.setText(str(value))
+
+            # Handle different widget types appropriately
+            if isinstance(field_widget, QLineEdit):
+                field_widget.setText(str(value))
+            elif isinstance(field_widget, QComboBox):
+                index = field_widget.findText(str(value), Qt.MatchFixedString)
+                if index >= 0:
+                    field_widget.setCurrentIndex(index)
+            elif isinstance(field_widget, QSpinBox):
+                field_widget.setValue(int(value))
+            elif isinstance(field_widget, QDoubleSpinBox):
+                field_widget.setValue(float(value))
+            elif isinstance(field_widget, QCheckBox):
+                field_widget.setChecked(bool(value))
+            elif isinstance(field_widget, QDateEdit):
+                if isinstance(value, date):
+                    field_widget.setDate(QDate(value.year, value.month, value.day))
+            elif isinstance(field_widget, QDateTimeEdit):
+                if isinstance(value, datetime.datetime):
+                    field_widget.setDateTime(QDateTime(value.year, value.month, value.day, value.hour, value.minute, value.second))
+
 
     def collect_data(self):
         """Collect data from form fields and return as a dictionary."""
