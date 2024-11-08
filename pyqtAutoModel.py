@@ -237,34 +237,46 @@ class ModelForm(QWidget):
     def submit_form(self):
         try:
             all_data = {}
-
+    
             for field_info in self.form_fields:
                 title = field_info['title']
                 duplicatable = field_info.get('duplicatable', False)
                 form_container = self.forms_container[title]
-
+                model_class = field_info['form'].model_class
+    
                 if duplicatable:
                     data_list = []
                     for i in range(form_container.count()):
                         form_instance_widget = form_container.itemAt(i).widget()
                         form_instance = form_instance_widget.findChild(ModelFormFields)
                         if form_instance:
-                            data_list.append(form_instance.collect_data())
+                            data = form_instance.collect_data()
+                            data_list.append(data)
+                            # Create an instance of the model class with the collected data and add to session
+                            instance = model_class(**data)
+                            session.add(instance)
                     all_data[title] = data_list
                 else:
                     form_instance = form_container.itemAt(0).widget().findChild(ModelFormFields)
                     if form_instance:
-                        all_data[title] = form_instance.collect_data()
-
+                        data = form_instance.collect_data()
+                        all_data[title] = data
+                        # Create or update the instance of the model class with the collected data
+                        instance = model_class(**data)
+                        session.add(instance)
+    
             print("Collected form data:", all_data)
+    
+            # Commit all new instances to the database
             session.commit()
             print("Data saved successfully!")
-
+    
         except Exception as e:
-            session.rollback()
+            session.rollback()  # Rollback in case of error
             print("An error occurred:", e)
         finally:
             session.close()
+
 
     def update_form_fields(self, title, included_columns=None, editable_fields=None):
         form_container = self.forms_container.get(title)
