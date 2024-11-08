@@ -141,6 +141,7 @@ class ModelForm(QWidget):
         self.main_layout.addLayout(section_layout)
 
     def add_form_instance(self, form_fields, title, instance_data=None, duplicatable=False):
+        """Add a new instance of ModelFormFields to the container layout."""
         form_instance = ModelFormFields(
             model_class=form_fields.model_class,
             included_columns=form_fields.included_columns,
@@ -161,25 +162,38 @@ class ModelForm(QWidget):
 
         self.forms_container[title].addWidget(form_container_widget)
 
+
     def remove_form_instance(self, form_container_widget, title):
         self.forms_container[title].removeWidget(form_container_widget)
         form_container_widget.deleteLater()
 
     def load_data(self, instances_data):
+        """
+        Load data into the form from SQLAlchemy instances.
+        
+        Parameters:
+            instances_data (dict): A dictionary where keys are form section titles
+                                and values are SQLAlchemy instances (or lists of them)
+        """
         for title, instance_data_list in instances_data.items():
             form_container = self.forms_container.get(title, None)
             if not form_container:
                 continue
 
+            # Clear existing forms in the section
             for i in reversed(range(form_container.count())):
                 widget = form_container.itemAt(i).widget()
                 if widget:
                     widget.deleteLater()
 
-            for instance_data in instance_data_list:
+            # Handle single instance (non-duplicatable) and multiple instances (duplicatable)
+            for instance_data in (instance_data_list if isinstance(instance_data_list, list) else [instance_data_list]):
                 form_fields = next(f['form'] for f in self.form_fields if f['title'] == title)
-                self.add_form_instance(form_fields, title, instance_data, duplicatable=form_fields.duplicatable)
+                duplicatable = next(f['duplicatable'] for f in self.form_fields if f['title'] == title)
+                self.add_form_instance(form_fields, title, instance_data=instance_data, duplicatable=duplicatable)
 
+
+            
     def submit_form(self):
         try:
             all_data = {}
