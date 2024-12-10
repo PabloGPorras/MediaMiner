@@ -2,40 +2,40 @@ from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxL
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 
-class TableWidgetWithCompactButtons(QWidget):
+class TableWidgetWithSmallActionColumn(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Table with Compact Buttons")
+        self.setWindowTitle("Table with Small Action Column")
         self.resize(600, 400)
 
         # Create the table widget
         self.table = QTableWidget(self)
         self.table.setRowCount(5)  # Set the number of rows
         self.table.setColumnCount(3)  # Set the number of columns
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Action"])
+        self.table.setHorizontalHeaderLabels(["Action", "ID", "Name"])
 
         # Adjust column sizes
         self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setSectionResizeMode(0)  # Keep ID column resizable
-        self.table.horizontalHeader().setSectionResizeMode(1)  # Keep Name column resizable
-        self.table.setColumnWidth(2, 30)  # Set the action column width to just fit the button
+        self.table.horizontalHeader().setSectionResizeMode(0)  # Fix Action column
+        self.table.setColumnWidth(0, 16)  # Set the Action column width to match the icon size
 
         # Populate the table with data
         for row in range(5):
-            self.table.setItem(row, 0, QTableWidgetItem(f"PO-{row + 1:06}"))
-            self.table.setItem(row, 1, QTableWidgetItem(f"Item {row + 1}"))
-
             # Create a small button with an icon
             btn = QPushButton()
             btn.setIcon(QIcon("path/to/your/icon.png"))  # Replace with the path to your icon file
             btn.setIconSize(QSize(16, 16))  # Set the size of the icon
-            btn.setFixedSize(24, 24)  # Set the button size
-            btn.setStyleSheet("border: none;")  # Remove the button border for a sleek look
+            btn.setFixedSize(16, 16)  # Match the button size to the icon size
+            btn.setStyleSheet("border: none; padding: 0;")  # Remove border and padding to make it compact
             btn.clicked.connect(lambda checked, r=row: self.handle_button_click(r))  # Pass row number to the handler
 
-            # Add the button to the table
-            self.table.setCellWidget(row, 2, btn)
+            # Add the button to the first column
+            self.table.setCellWidget(row, 0, btn)
+
+            # Populate the other columns
+            self.table.setItem(row, 1, QTableWidgetItem(f"PO-{row + 1:06}"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"Item {row + 1}"))
 
         # Set layout
         layout = QVBoxLayout()
@@ -47,6 +47,6 @@ class TableWidgetWithCompactButtons(QWidget):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = TableWidgetWithCompactButtons()
+    window = TableWidgetWithSmallActionColumn()
     window.show()
     app.exec()
