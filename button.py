@@ -31,6 +31,10 @@ class TableWidgetWithIconButtons(QWidget):
             # Add the button to the table
             self.table.setCellWidget(row, 2, btn)
 
+        # Resize the columns to fit the content
+        self.table.resizeColumnsToContents()
+        self.table.setColumnWidth(2, 30)  # Ensure the "Action" column is small enough for the button
+
         # Set layout
         layout = QVBoxLayout()
         layout.addWidget(self.table)
