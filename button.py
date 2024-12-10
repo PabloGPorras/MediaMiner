@@ -2,11 +2,11 @@ from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxL
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 
-class TableWidgetWithIconButtons(QWidget):
+class TableWidgetWithCompactButtons(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Table with Icon Buttons")
+        self.setWindowTitle("Table with Compact Buttons")
         self.resize(600, 400)
 
         # Create the table widget
@@ -14,6 +14,12 @@ class TableWidgetWithIconButtons(QWidget):
         self.table.setRowCount(5)  # Set the number of rows
         self.table.setColumnCount(3)  # Set the number of columns
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Action"])
+
+        # Adjust column sizes
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setSectionResizeMode(0)  # Keep ID column resizable
+        self.table.horizontalHeader().setSectionResizeMode(1)  # Keep Name column resizable
+        self.table.setColumnWidth(2, 30)  # Set the action column width to just fit the button
 
         # Populate the table with data
         for row in range(5):
@@ -25,15 +31,11 @@ class TableWidgetWithIconButtons(QWidget):
             btn.setIcon(QIcon("path/to/your/icon.png"))  # Replace with the path to your icon file
             btn.setIconSize(QSize(16, 16))  # Set the size of the icon
             btn.setFixedSize(24, 24)  # Set the button size
-            btn.setStyleSheet("border: none;")  # Remove the button border to make it sleek
+            btn.setStyleSheet("border: none;")  # Remove the button border for a sleek look
             btn.clicked.connect(lambda checked, r=row: self.handle_button_click(r))  # Pass row number to the handler
 
             # Add the button to the table
             self.table.setCellWidget(row, 2, btn)
-
-        # Resize the columns to fit the content
-        self.table.resizeColumnsToContents()
-        self.table.setColumnWidth(2, 30)  # Ensure the "Action" column is small enough for the button
 
         # Set layout
         layout = QVBoxLayout()
@@ -45,6 +47,6 @@ class TableWidgetWithIconButtons(QWidget):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = TableWidgetWithIconButtons()
+    window = TableWidgetWithCompactButtons()
     window.show()
     app.exec()
