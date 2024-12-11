@@ -1,40 +1,21 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
+def loadComments(self, row):
+    uniqueRef = searchTableWidgetByColumnName(self.props['parent'].tableWidget, row, 'unique_ref').text()
+    if self.props['uniqueRef'] != uniqueRef:
+        self.props['uniqueRef'] = uniqueRef
 
-class MainWidget(QWidget):
-    def __init__(self):
-        super().__init__()
+    if hasattr(self, 'commentScreen'):
+        self.commentScreen.setParent(None)
 
-        # Main widget layout
-        self.layout = QVBoxLayout(self)
-        
-        # Button to show the pop-out widget
-        self.button = QPushButton("Show Pop-Out")
-        self.button.clicked.connect(self.show_popout)
+    self.commentScreen = CommentScreen(None, self.props)
 
-        # Add button to layout
-        self.layout.addWidget(self.button)
+    # Create a pop-out widget as a top-level window (no parent)
+    self.popout = QWidget()
+    self.popout.setWindowTitle("Pop-Out Window")
+    self.popout.resize(300, 200)
 
-    def show_popout(self):
-        # Create a pop-out widget
-        self.popout = QWidget()
-        self.popout.setWindowTitle("Pop-Out Window")
-        self.popout.resize(300, 200)
-        
-        # Add some content to the pop-out
-        layout = QVBoxLayout(self.popout)
-        label = QLabel("This is a pop-out widget!")
-        layout.addWidget(label)
+    # Add some content to the pop-out
+    layout = QVBoxLayout(self.popout)
+    layout.addWidget(QLabel("This is a pop-out widget!"))
 
-        # Show the pop-out as a top-level window
-        self.popout.show()
-
-if __name__ == "__main__":
-    app = QApplication([])
-
-    # Main application widget
-    main_window = MainWidget()
-    main_window.setWindowTitle("Main Window")
-    main_window.resize(400, 300)
-    main_window.show()
-
-    app.exec()
+    # Show the pop-out as a top-level window
+    self.popout.show()
