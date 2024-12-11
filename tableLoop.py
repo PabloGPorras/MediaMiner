@@ -24,20 +24,22 @@ class MyWidget(QWidget):
         button.clicked.connect(self.process_selected_rows)
         layout.addWidget(button)
 
-    def process_selected_rows(self):
-        """Process all selected rows."""
-        selected_rows = set()
-        for index in self.table.selectionModel().selectedIndexes():  # Get all selected indexes
-            selected_rows.add(index.row())  # Collect unique row numbers
+def process_selected_rows(self):
+    """Process all selected rows and extract the value in the 'unique_ref' column."""
+    selected_rows = set()
+    unique_ref_column = 1  # Replace with the actual column index of 'unique_ref'
 
-        # Loop over the selected rows
-        for row in selected_rows:
-            print(f"Processing Row {row + 1}")
-            # Access data for each column in the selected row
-            for col in range(self.model.columnCount()):
-                item = self.model.item(row, col)
-                if item:
-                    print(f"Row {row + 1}, Col {col + 1}: {item.text()}")
+    # Collect unique selected rows
+    for item in self.table.selectedItems():
+        selected_rows.add(item.row())
+
+    # Process each selected row
+    for row in selected_rows:
+        unique_ref_item = self.table.item(row, unique_ref_column)
+        if unique_ref_item:  # Check if the item exists
+            unique_ref_value = unique_ref_item.text()
+            print(f"Row {row + 1}, Unique Ref: {unique_ref_value}")
+
 
 
 if __name__ == "__main__":
