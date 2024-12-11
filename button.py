@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTableWidget, QPushButton, QTableWidgetItem, QDialog, QVBoxLayout
+from PyQt6.QtWidgets import QTableWidget, QPushButton, QTableWidgetItem, QDialog, QVBoxLayout, QSizePolicy
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from PyQt6.QtWidgets import QHeaderView
@@ -22,7 +22,7 @@ def loadDataObjects(table, objectArray: list, columnNameFilter: list = None, row
         # Adjust the size of the action button column
         table.horizontalHeader().setStretchLastSection(False)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Fix Action column
-        table.setColumnWidth(0, 16)  # Set the Action column width to fit the button size
+        table.setColumnWidth(0, 50)  # Adjust width as desired
 
     # Populate the rows
     for row, obj in enumerate(objectArray):
@@ -31,8 +31,11 @@ def loadDataObjects(table, objectArray: list, columnNameFilter: list = None, row
             btn = QPushButton()
             btn.setIcon(QIcon("path/to/your/icon.png"))  # Replace with your icon file
             btn.setIconSize(QSize(16, 16))  # Set the icon size
-            btn.setFixedSize(16, 16)  # Set the button size
             btn.setStyleSheet("border: none; padding: 0;")  # Compact style
+            
+            # Set the button to expand and fill the cell
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
             btn.clicked.connect(lambda checked, r=row: show_custom_widget(rowAction, r))  # Pass row number to handler
 
             # Add the button to the first column
