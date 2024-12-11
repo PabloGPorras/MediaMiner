@@ -5,43 +5,44 @@ from PyQt6.QtWidgets import QHeaderView
 
 
 def loadDataObjects(table, objectArray: list, columnNameFilter: list = None, rowAction=None) -> None:
-    # Grabbing the columns names
+    # Grab the column names
     firstObject = objectArray[0]
     columnNames = [column.name for column in firstObject.__table__.columns if column.name not in columnNameFilter]
 
+    # Set up the table dimensions
     table.setRowCount(len(objectArray))
-    table.setColumnCount(len(columnNames) + (1 if rowAction else 0))  # Add an extra column for the action if needed
+    table.setColumnCount(len(columnNames) + (1 if rowAction else 0))  # Add one column for the action button
 
-    # Setting the header labels
-    headerLabels = [""] if rowAction else []  # Add a blank header for the action column
+    # Set the header labels (prepend an empty header for the action button)
+    headerLabels = [""] if rowAction else []  # Blank header for the action column
     headerLabels += [str(column) for column in columnNames]
     table.setHorizontalHeaderLabels(headerLabels)
 
     if rowAction:
-        # Adjust column sizes
+        # Adjust the size of the action button column
         table.horizontalHeader().setStretchLastSection(False)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Fix Action column
-        table.setColumnWidth(0, 16)  # Set the Action column width to match the button size
+        table.setColumnWidth(0, 16)  # Set the Action column width to fit the button size
 
-    # Populate row data
+    # Populate the rows
     for row, obj in enumerate(objectArray):
         if rowAction:
-            # Create a small button with an icon
+            # Create the action button
             btn = QPushButton()
             btn.setIcon(QIcon("path/to/your/icon.png"))  # Replace with your icon file
-            btn.setIconSize(QSize(16, 16))  # Set the size of the icon
-            btn.setFixedSize(16, 16)  # Match the button size to the icon size
-            btn.setStyleSheet("border: none; padding: 0;")  # Compact button
-            btn.clicked.connect(lambda checked, r=row: show_custom_widget(rowAction, r))  # Pass row number to the handler
+            btn.setIconSize(QSize(16, 16))  # Set the icon size
+            btn.setFixedSize(16, 16)  # Set the button size
+            btn.setStyleSheet("border: none; padding: 0;")  # Compact style
+            btn.clicked.connect(lambda checked, r=row: show_custom_widget(rowAction, r))  # Pass row number to handler
 
             # Add the button to the first column
             table.setCellWidget(row, 0, btn)
 
-        # Populate other columns
+        # Populate the rest of the columns (shift by 1 because the action button occupies the first column)
         for col, columnName in enumerate(columnNames):
             if columnName not in columnNameFilter:
                 item = QTableWidgetItem(str(getattr(obj, columnName)))
-                table.setItem(row, col + (1 if rowAction else 0), item)  # Offset by 1 if rowAction is enabled
+                table.setItem(row, col + 1, item)  # Shift columns by 1
 
 
 def show_custom_widget(rowAction, row):
