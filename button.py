@@ -17,7 +17,7 @@ class TableWidgetWithSmallActionColumn(QWidget):
 
         # Adjust column sizes
         self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setSectionResizeMode(0)  # Fix Action column
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Fix Action column
         self.table.setColumnWidth(0, 16)  # Set the Action column width to match the icon size
 
         # Populate the table with data
