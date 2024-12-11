@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTableWidget, QPushButton, QTableWidgetItem, QDialog, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QTableWidget, QPushButton, QTableWidgetItem, QVBoxLayout, QWidget, QApplication
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from PyQt6.QtWidgets import QHeaderView
@@ -27,18 +27,24 @@ def loadDataObjects(table, objectArray: list, columnNameFilter: list = None, row
     # Populate the rows
     for row, obj in enumerate(objectArray):
         if rowAction:
+            # Create a container widget to hold the button
+            container = QWidget()
+            layout = QVBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+            layout.setSpacing(0)  # Remove spacing
+
             # Create the action button
-            btn = QPushButton()
+            btn = QPushButton(container)
             btn.setIcon(QIcon("path/to/your/icon.png"))  # Replace with your icon file
             btn.setIconSize(QSize(16, 16))  # Set the icon size
             btn.setStyleSheet("border: none; padding: 0;")  # Compact style
-
-            # Ensure the button fills the cell
-            btn.setMinimumSize(table.columnWidth(0), table.rowHeight(row))  # Dynamically adjust button size
             btn.clicked.connect(lambda checked, r=row: show_custom_widget(rowAction, r))  # Pass row number to handler
 
-            # Add the button to the first column
-            table.setCellWidget(row, 0, btn)
+            # Add the button to the container layout
+            layout.addWidget(btn)
+
+            # Add the container to the first column
+            table.setCellWidget(row, 0, container)
 
         # Populate the rest of the columns (shift by 1 because the action button occupies the first column)
         for col, columnName in enumerate(columnNames):
@@ -52,15 +58,48 @@ def show_custom_widget(rowAction, row):
     dialog.exec()  # Show the dialog as a modal window
 
 
-# Example of a custom dialog
-class CustomActionWidget(QDialog):
-    def __init__(self, row):
-        super().__init__()
-        self.setWindowTitle(f"Actions for Row {row}")
-        self.setFixedSize(200, 150)
+# Example usage
+if __name__ == "__main__":
+    import sys
 
-        layout = QVBoxLayout()
-        layout.addWidget(QPushButton(f"Receive Purchase Order (Row {row})", self))
-        layout.addWidget(QPushButton(f"Create Purchase Order Return (Row {row})", self))
-        layout.addWidget(QPushButton(f"View Tracking (Row {row})", self))
-        self.setLayout(layout)
+    app = QApplication(sys.argv)
+
+    # Sample table and data
+    tableWidget = QTableWidget()
+    tableWidget.setRowCount(3)
+    tableWidget.setColumnCount(3)
+
+    # Simulated object with columns
+    class SampleObject:
+        def __init__(self, group_id, unique_ref, request_type):
+            self.group_id = group_id
+            self.unique_ref = unique_ref
+            self.request_type = request_type
+
+        @property
+        def __table__(self):
+            from collections import namedtuple
+            Column = namedtuple("Column", ["name"])
+            return namedtuple("Table", ["columns"])(columns=[
+                Column("group_id"),
+                Column("unique_ref"),
+                Column("request_type"),
+            ])
+
+    # Sample data
+    objects = [
+        SampleObject("GROUP001", "UNIQUE001", "TYPE001"),
+        SampleObject("GROUP002", "UNIQUE002", "TYPE002"),
+        SampleObject("GROUP003", "UNIQUE003", "TYPE003"),
+    ]
+
+    # Load data into the table
+    loadDataObjects(
+        tableWidget, objects, columnNameFilter=[], rowAction=lambda row: print(f"Action for row {row}")
+    )
+
+    # Show the table
+    tableWidget.resize(800, 400)
+    tableWidget.show()
+
+    sys.exit(app.exec())
