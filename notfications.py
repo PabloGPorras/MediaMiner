@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QScrollArea
+    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget
 )
 from PyQt6.QtCore import Qt, QTimer, QPoint
+from PyQt6.QtGui import QSizePolicy
 
 class NotificationOverlay(QWidget):
     def __init__(self, parent=None):
@@ -25,20 +26,13 @@ class NotificationOverlay(QWidget):
         error_layout.setContentsMargins(5, 5, 5, 5)
         error_container.setLayout(error_layout)
 
-        # Scrollable area for long error messages
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedHeight(60)  # Set max height for the error box
-        scroll_area.setStyleSheet("border: none;")
-
         # Error label
         error_label = QLabel(error_message)
         error_label.setStyleSheet("color: red; font-size: 12px;")
         error_label.setWordWrap(True)
+        error_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         error_label.setMaximumWidth(300)  # Optional: Limit the width for better readability
-        scroll_area.setWidget(error_label)
-
-        error_layout.addWidget(scroll_area)
+        error_layout.addWidget(error_label)
 
         # Close button to remove this specific error
         close_button = QPushButton("✖")
@@ -103,8 +97,8 @@ class MainWindow(QMainWindow):
         # Show the notification overlay
         self.notification_overlay.show()
         self.notification_overlay.add_error(
-            "A very long error message that demonstrates the overlay functionality. "
-            "You can add multiple errors, and they will appear here."
+            "A very long error message that demonstrates how the overlay dynamically resizes "
+            "to fit the content without needing scrollbars. The height adjusts automatically."
         )
         self.notification_overlay.add_error("A short error occurred.")
 
