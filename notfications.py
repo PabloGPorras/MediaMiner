@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget
+    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QScrollArea
 )
 from PyQt6.QtCore import Qt
 
@@ -26,11 +26,20 @@ class NotificationWidget(QWidget):
         error_layout.setContentsMargins(3, 3, 3, 3)
         error_container.setLayout(error_layout)
 
+        # Scrollable area for long error messages
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFixedHeight(60)  # Set max height for the error box
+        scroll_area.setStyleSheet("border: none;")
+
         # Error label
         error_label = QLabel(error_message)
         error_label.setStyleSheet("color: red; font-size: 12px;")
         error_label.setWordWrap(True)
-        error_layout.addWidget(error_label)
+        error_label.setMaximumWidth(300)  # Optional: Limit the width for better readability
+        scroll_area.setWidget(error_label)
+
+        error_layout.addWidget(scroll_area)
 
         # Add the container to the main layout
         self.layout.addWidget(error_container)
@@ -76,9 +85,13 @@ class MainWindow(QMainWindow):
     def trigger_error(self):
         # Show the notification area if hidden
         self.notification_area.setVisible(True)
-        # Add an error message
+        # Add error messages (one short, one long)
         self.notification_area.add_error("An error occurred! Please try again.")
-        self.notification_area.add_error("Another issue occurred! Check your input.")
+        self.notification_area.add_error(
+            "A very long error message that exceeds the maximum height of the notification box. "
+            "This message demonstrates how scrolling works within the error box, ensuring that "
+            "the user interface remains compact and visually appealing."
+        )
 
 
 if __name__ == "__main__":
