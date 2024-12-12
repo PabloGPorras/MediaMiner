@@ -15,34 +15,36 @@ def parse_html_to_dataframe(folder_path):
             with open(file_path, 'r', encoding='utf-8') as file:
                 soup = BeautifulSoup(file, 'lxml')
 
-                # Find all rules by their structure
+                # Find all rules by their anchor tags
                 rules = soup.find_all('a', attrs={'name': True})
 
                 for rule in rules:
                     rule_data = {}
 
-                    # Rule ID
+                    # Rule Name (e.g., rule1, rule2)
                     rule_data['Rule Name'] = rule.text.strip() if rule.text else None
 
-                    # Find related details
+                    # Find associated blockquote and parse details
                     blockquote = rule.find_next('blockquote')
-
                     if blockquote:
+                        # Extract text from <PRE> tags for rule logic
+                        pre = blockquote.find('pre')
+                        if pre:
+                            rule_data['Rule Logic'] = pre.text.strip()
+
+                        # Extract additional details from <dl> if available
                         details = blockquote.find_next('dl')
                         if details:
-                            detail_tags = details.find_all('dt')
-                            value_tags = details.find_all('dd')
-
-                            for dt, dd in zip(detail_tags, value_tags):
+                            for dt, dd in zip(details.find_all('dt'), details.find_all('dd')):
                                 key = dt.text.strip() if dt else None
                                 value = dd.text.strip() if dd else None
                                 if key and value:
                                     rule_data[key] = value
 
-                    # Add rule to the list
+                    # Append to all_rules
                     all_rules.append(rule_data)
 
-    # Convert list of rules to DataFrame
+    # Convert list of rules to a DataFrame
     df = pd.DataFrame(all_rules)
 
     return df
