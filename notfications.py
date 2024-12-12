@@ -1,29 +1,28 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QScrollArea
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
-class NotificationWidget(QWidget):
+class NotificationOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background-color: #ffcccc; border: 1px solid red;")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet("background-color: rgba(255, 204, 204, 200); border: 1px solid red;")
         self.layout = QVBoxLayout()
-        self.layout.setSpacing(2)  # Reduce spacing between notifications
-        self.layout.setContentsMargins(5, 5, 5, 5)
+        self.layout.setSpacing(5)  # Reduce spacing between notifications
+        self.layout.setContentsMargins(10, 10, 10, 10)
         self.setLayout(self.layout)
-
-        # Connect a mouse press event to clear notifications
-        self.mousePressEvent = self.clear_all_notifications
 
     def add_error(self, error_message):
         # Create a container for each error
         error_container = QWidget()
         error_container.setStyleSheet(
-            "background-color: #ffeeee; border: 1px solid red; padding: 3px; border-radius: 3px;"
+            "background-color: #ffeeee; border: 1px solid red; padding: 5px; border-radius: 5px;"
         )
         error_layout = QVBoxLayout()
         error_layout.setSpacing(1)
-        error_layout.setContentsMargins(3, 3, 3, 3)
+        error_layout.setContentsMargins(5, 5, 5, 5)
         error_container.setLayout(error_layout)
 
         # Scrollable area for long error messages
@@ -41,11 +40,36 @@ class NotificationWidget(QWidget):
 
         error_layout.addWidget(scroll_area)
 
+        # Close button to remove this specific error
+        close_button = QPushButton("✖")
+        close_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: transparent; 
+                color: red; 
+                font-weight: bold; 
+                border: none; 
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                color: darkred;
+            }
+            """
+        )
+        close_button.setFixedSize(20, 20)
+        close_button.clicked.connect(lambda: self._remove_error(error_container))
+        error_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+
         # Add the container to the main layout
         self.layout.addWidget(error_container)
 
-    def clear_all_notifications(self, event):
-        """Clear all notifications when the area is clicked."""
+    def _remove_error(self, container):
+        """Remove a single error notification."""
+        self.layout.removeWidget(container)
+        container.deleteLater()
+
+    def clear_all_errors(self):
+        """Clear all notifications."""
         while self.layout.count():
             widget = self.layout.takeAt(0).widget()
             if widget is not None:
@@ -58,14 +82,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Error Notification Example")
         self.setGeometry(100, 100, 800, 600)
 
-        # Main layout
-        main_layout = QVBoxLayout()
-
-        # Notification area
-        self.notification_area = NotificationWidget(self)
-        self.notification_area.setVisible(False)  # Hidden by default
-        main_layout.addWidget(self.notification_area)
-
         # Central content
         central_widget = QWidget()
         central_layout = QVBoxLayout()
@@ -76,22 +92,24 @@ class MainWindow(QMainWindow):
         error_button.clicked.connect(self.trigger_error)
         central_layout.addWidget(error_button)
 
-        # Set central widget
-        main_layout.addWidget(central_widget)
-        container = QWidget()
-        container.setLayout(main_layout)
-        self.setCentralWidget(container)
+        self.setCentralWidget(central_widget)
+
+        # Notification overlay
+        self.notification_overlay = NotificationOverlay(self)
+        self.notification_overlay.setGeometry(50, 50, 400, 200)  # Adjust position and size
+        self.notification_overlay.hide()
 
     def trigger_error(self):
-        # Show the notification area if hidden
-        self.notification_area.setVisible(True)
-        # Add error messages (one short, one long)
-        self.notification_area.add_error("An error occurred! Please try again.")
-        self.notification_area.add_error(
-            "A very long error message that exceeds the maximum height of the notification box. "
-            "This message demonstrates how scrolling works within the error box, ensuring that "
-            "the user interface remains compact and visually appealing."
+        # Show the notification overlay
+        self.notification_overlay.show()
+        self.notification_overlay.add_error(
+            "A very long error message that demonstrates the overlay functionality. "
+            "You can add multiple errors, and they will appear here."
         )
+        self.notification_overlay.add_error("A short error occurred.")
+
+        # Auto-hide overlay after 5 seconds (optional)
+        QTimer.singleShot(5000, self.notification_overlay.hide)
 
 
 if __name__ == "__main__":
