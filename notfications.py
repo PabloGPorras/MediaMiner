@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget
+    QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget
 )
 from PyQt6.QtCore import Qt, QTimer, QPoint
-from PyQt6.QtGui import QSizePolicy
 
 class NotificationOverlay(QWidget):
     def __init__(self, parent=None):
@@ -16,51 +15,18 @@ class NotificationOverlay(QWidget):
         self.setLayout(self.layout)
 
     def add_error(self, error_message):
-        # Create a container for each error
-        error_container = QWidget()
-        error_container.setStyleSheet(
-            "background-color: #ffeeee; border: 1px solid red; padding: 5px; border-radius: 5px;"
-        )
-        error_layout = QVBoxLayout()
-        error_layout.setSpacing(1)
-        error_layout.setContentsMargins(5, 5, 5, 5)
-        error_container.setLayout(error_layout)
-
-        # Error label
+        # Create a label for the error message
         error_label = QLabel(error_message)
-        error_label.setStyleSheet("color: red; font-size: 12px;")
-        error_label.setWordWrap(True)
-        error_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        error_label.setMaximumWidth(300)  # Optional: Limit the width for better readability
-        error_layout.addWidget(error_label)
-
-        # Close button to remove this specific error
-        close_button = QPushButton("✖")
-        close_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: transparent; 
-                color: red; 
-                font-weight: bold; 
-                border: none; 
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                color: darkred;
-            }
-            """
+        error_label.setStyleSheet(
+            "background-color: #ffeeee; border: 1px solid red; padding: 5px; "
+            "border-radius: 5px; color: red; font-size: 12px;"
         )
-        close_button.setFixedSize(20, 20)
-        close_button.clicked.connect(lambda: self._remove_error(error_container))
-        error_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+        error_label.setWordWrap(True)
+        error_label.setMaximumWidth(300)  # Limit width for readability
+        error_label.setSizePolicy(QLabel.SizePolicy.Policy.Preferred, QLabel.SizePolicy.Policy.Fixed)
 
-        # Add the container to the main layout
-        self.layout.addWidget(error_container)
-
-    def _remove_error(self, container):
-        """Remove a single error notification."""
-        self.layout.removeWidget(container)
-        container.deleteLater()
+        # Add the label to the main layout
+        self.layout.addWidget(error_label)
 
     def clear_all_errors(self):
         """Clear all notifications."""
@@ -98,7 +64,7 @@ class MainWindow(QMainWindow):
         self.notification_overlay.show()
         self.notification_overlay.add_error(
             "A very long error message that demonstrates how the overlay dynamically resizes "
-            "to fit the content without needing scrollbars. The height adjusts automatically."
+            "to fit the content. The height adjusts automatically."
         )
         self.notification_overlay.add_error("A short error occurred.")
 
