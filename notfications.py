@@ -1,22 +1,24 @@
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QHBoxLayout
+    QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QHBoxLayout, QStackedLayout
 )
 from PyQt6.QtCore import Qt
 
 class NotificationWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        self.setStyleSheet("background-color: #ffcccc; border: 1px solid red; padding: 5px;")
+        self.setStyleSheet("background-color: #ffcccc; border: 1px solid red;")
         self.layout = QVBoxLayout()
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.layout)
-        self.setMinimumHeight(50)
 
     def add_error(self, error_message):
         # Create a container for each error
         error_container = QWidget()
-        error_container.setStyleSheet("border-bottom: 1px solid red; padding: 5px;")
-        error_layout = QHBoxLayout()
+        error_container.setStyleSheet(
+            "background-color: #ffeeee; border: 1px solid red; padding: 5px; border-radius: 5px;"
+        )
+        error_layout = QStackedLayout()  # Stack layout allows overlapping elements
         error_container.setLayout(error_layout)
 
         # Error label
@@ -28,10 +30,27 @@ class NotificationWidget(QWidget):
         # Close button
         close_button = QPushButton("✖")
         close_button.setStyleSheet(
-            "background-color: transparent; color: red; font-weight: bold; border: none; padding: 0 5px;"
+            """
+            QPushButton {
+                background-color: transparent; 
+                color: red; 
+                font-weight: bold; 
+                border: none; 
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                color: darkred;
+            }
+            """
         )
+        close_button.setFixedSize(20, 20)
         close_button.clicked.connect(lambda: self._remove_error(error_container))
-        error_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignTop)
+
+        # Position the close button in the top-right corner
+        close_button_layout = QVBoxLayout()
+        close_button_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        error_layout.addWidget(QWidget())  # Add a dummy widget for layout alignment
+        error_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         # Add the container to the main layout
         self.layout.addWidget(error_container)
