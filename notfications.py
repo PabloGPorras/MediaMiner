@@ -1,12 +1,12 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QScrollArea
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QPoint
 
 class NotificationOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.SubWindow)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setStyleSheet("background-color: rgba(255, 204, 204, 200); border: 1px solid red;")
         self.layout = QVBoxLayout()
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
 
         # Notification overlay
         self.notification_overlay = NotificationOverlay(self)
-        self.notification_overlay.setGeometry(50, 50, 400, 200)  # Adjust position and size
+        self.notification_overlay.setGeometry(50, 50, 400, 200)  # Adjust initial position and size
         self.notification_overlay.hide()
 
     def trigger_error(self):
@@ -110,6 +110,14 @@ class MainWindow(QMainWindow):
 
         # Auto-hide overlay after 5 seconds (optional)
         QTimer.singleShot(5000, self.notification_overlay.hide)
+
+    def moveEvent(self, event):
+        """Reposition the notification overlay when the main window is moved."""
+        super().moveEvent(event)
+        if self.notification_overlay.isVisible():
+            # Update the position of the overlay relative to the main window
+            overlay_pos = self.geometry().topLeft() + QPoint(50, 50)  # Offset from the main window
+            self.notification_overlay.move(overlay_pos)
 
 
 if __name__ == "__main__":
