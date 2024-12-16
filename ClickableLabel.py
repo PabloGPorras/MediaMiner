@@ -7,3 +7,9 @@ class ClickableLabel(QLabel):
     def mousePressEvent(self, event):
         self.close()  # Close the label on click
         super().mousePressEvent(event)
+
+# Example usage
+app = QApplication([])
+label = ClickableLabel("Click me to close")
+label.show()
+app.exec()
