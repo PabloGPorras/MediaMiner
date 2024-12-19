@@ -1,0 +1,30 @@
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim rngDropdown As Range
+    Dim oldValue As String
+    Dim newValue As String
+    Dim separator As String
+    separator = ", " ' Use a comma and space to separate multiple selections.
+
+    ' Specify the range of your dropdown (e.g., B2:B10)
+    Set rngDropdown = Me.Range("B2:B10") 
+
+    If Not Intersect(Target, rngDropdown) Is Nothing Then
+        Application.EnableEvents = False
+        newValue = Target.Value
+        oldValue = Target.OldValue
+
+        If oldValue = "" Then
+            Target.Value = newValue
+        ElseIf newValue = "" Then
+            ' Do nothing; allow deletion of values.
+        Else
+            ' Append new selection.
+            If InStr(1, oldValue, newValue) = 0 Then
+                Target.Value = oldValue & separator & newValue
+            Else
+                Target.Value = oldValue ' Avoid duplicate selections.
+            End If
+        End If
+        Application.EnableEvents = True
+    End If
+End Sub
