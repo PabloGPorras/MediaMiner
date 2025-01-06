@@ -1,0 +1,11 @@
+Hi Alex,
+
+After reviewing the fraud tagging macro's results, we are observing a 100% no-match as expected. Since we are currently unable to produce input files with transactions from our lower environment, we are using production input files that do not match any transactions in the lower TDR.
+
+For now, we can confirm that the fraud tagging macro is providing valid output with the expected results. Once in production, we expect to observe the number of transactions being tagged.
+
+Should an issue arise in production, I would like to emphasize that this has no impact on the overall performance of the system. Fraud tagging is used by SAS for model production, and in cases where SAS wants to use data that was not correctly fraud-tagged, we will need to help them avoid these date ranges.
+
+This should not be an issue given our current credit model, which is expected to remain stable for the foreseeable future. SAS will also evaluate more current date ranges in their next development.
+
+Please let me know if there are any concerns or if further testing is needed.
