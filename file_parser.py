@@ -15,19 +15,23 @@ snowflake_config = {
 }
 target_table = "your_table"  # 👈 Update this
 
-# Regex pattern for lul_name
-lul_pattern = re.compile(r'%let\s+ll_name\d{2}\s*=\s*(\w+)\s*;', re.IGNORECASE)
+# Regex pattern that handles both ll_name and ll_name01, ll_name02, etc.
+lul_pattern = re.compile(r'%let\s+ll_name\d*\s*=\s*(\w+)\s*;', re.IGNORECASE)
 
 # Collect script info
 rows = []
 for filename in os.listdir(folder_path):
-    if filename.endswith(".sas") or filename.endswith(".txt"):
-        full_path = os.path.join(folder_path, filename)
+    full_path = os.path.join(folder_path, filename)
+    if os.path.isfile(full_path):
         with open(full_path, "r", encoding="utf-8") as file:
             code = file.read()
-            match = lul_pattern.search(code)
-            lul_name = match.group(1) if match else None
-            rows.append((filename, code, lul_name))
+            lul_names = lul_pattern.findall(code)
+            if lul_names:
+                for lul_name in lul_names:
+                    rows.append((filename, code, lul_name))
+            else:
+                # Still include scripts without lul_name, if you want
+                rows.append((filename, code, None))
 
 # Connect to Snowflake
 conn = snowflake.connector.connect(**snowflake_config)
