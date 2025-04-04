@@ -2,10 +2,9 @@ import os
 import re
 import pandas as pd
 import snowflake.connector
-from snowflake.connector.pandas_tools import write_pandas
 
-# Configuration
-folder_path = "./your_folder"  # Change this to your actual path
+# Config
+folder_path = "./your_folder"  # 👈 Update this
 snowflake_config = {
     "user": "your_user",
     "password": "your_password",
@@ -14,33 +13,42 @@ snowflake_config = {
     "database": "your_database",
     "schema": "your_schema"
 }
-target_table = "your_table"
+target_table = "your_table"  # 👈 Update this
 
-# Regex pattern to find the lul_name
+# Regex pattern for lul_name
 lul_pattern = re.compile(r'%let\s+ll_name\d{2}\s*=\s*(\w+)\s*;', re.IGNORECASE)
 
-# List to hold extracted data
-data = []
-
-# Loop through files in the folder
+# Collect script info
+rows = []
 for filename in os.listdir(folder_path):
-    if filename.endswith(".sas") or filename.endswith(".txt"):  # adjust as needed
+    if filename.endswith(".sas") or filename.endswith(".txt"):
         full_path = os.path.join(folder_path, filename)
         with open(full_path, "r", encoding="utf-8") as file:
             code = file.read()
             match = lul_pattern.search(code)
             lul_name = match.group(1) if match else None
-            data.append({
-                "script_name": filename,
-                "code": code,
-                "lul_name": lul_name
-            })
+            rows.append((filename, code, lul_name))
 
-# Create a DataFrame
-df = pd.DataFrame(data)
-
-# Connect to Snowflake and upload
+# Connect to Snowflake
 conn = snowflake.connector.connect(**snowflake_config)
-success, nchunks, nrows, _ = write_pandas(conn, df, target_table)
+cs = conn.cursor()
 
-print(f"Uploaded {nrows} rows to {target_table} in Snowflake.")
+# Optional: create table if not exists
+cs.execute(f"""
+    CREATE TABLE IF NOT EXISTS {target_table} (
+        script_name STRING,
+        code STRING,
+        lul_name STRING
+    )
+""")
+
+# Insert data
+insert_sql = f"INSERT INTO {target_table} (script_name, code, lul_name) VALUES (%s, %s, %s)"
+cs.executemany(insert_sql, rows)
+
+# Confirm upload
+print(f"Uploaded {len(rows)} rows to {target_table} in Snowflake.")
+
+# Cleanup
+cs.close()
+conn.close()
